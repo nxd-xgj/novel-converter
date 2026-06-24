@@ -14,11 +14,6 @@ __pycache__/
 dist/
 build/
 
-# 构建产物
-*.spec
-*.zip
-*.tar.gz
-
 # IDE
 .vscode/
 .idea/

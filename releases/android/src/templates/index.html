@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>小说编码转换工具 - Novel Converter</title>
+<style>
+/* ═══════════════════════════════════════════════════
+   CSS Reset & Variables
+   ═══════════════════════════════════════════════════ */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root {
+  --bg: #0f0f1a;
+  --surface: #1a1a2e;
+  --surface2: #222240;
+  --border: #2a2a4a;
+  --text: #e0e0f0;
+  --text-dim: #8888aa;
+  --primary: #6c5ce7;
+  --primary-glow: #a29bfe;
+  --success: #00cec9;
+  --warn: #fdcb6e;
+  --danger: #ff7675;
+  --info: #74b9ff;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --transition: 0.2s cubic-bezier(0.4,0,0.2,1);
+}
+
+body {
+  font-family: -apple-system, "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  line-height: 1.6;
+}
+
+/* ═══════════════════════════════════════════════════
+   Header
+   ═══════════════════════════════════════════════════ */
+.header {
+  background: linear-gradient(135deg, #1a1a3e 0%, #0f0f2a 50%, #1a1a3e 100%);
+  border-bottom: 1px solid var(--border);
+  padding: 24px 0;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  backdrop-filter: blur(20px);
+}
+.header-inner {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.logo-icon {
+  width: 44px; height: 44px;
+  background: linear-gradient(135deg, var(--primary), #fd79a8);
+  border-radius: var(--radius-sm);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px;
+  box-shadow: 0 4px 20px rgba(108,92,231,0.3);
+}
+.logo h1 { font-size: 20px; font-weight: 700; letter-spacing: -0.5px; }
+.logo span { font-size: 12px; color: var(--text-dim); font-weight: 400; }
+.header-badge {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 6px 16px;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+/* ═══════════════════════════════════════════════════
+   Main Container
+   ═══════════════════════════════════════════════════ */
+.container {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 32px 24px;
+}
+
+/* ═══════════════════════════════════════════════════
+   Upload Zone
+   ═══════════════════════════════════════════════════ */
+.upload-zone {
+  border: 2px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 48px 24px;
+  text-align: center;
+  transition: all var(--transition);
+  background: var(--surface);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+.upload-zone:hover, .upload-zone.drag-over {
+  border-color: var(--primary);
+  background: rgba(108,92,231,0.06);
+  box-shadow: 0 0 40px rgba(108,92,231,0.08);
+}
+.upload-zone.drag-over {
+  border-style: solid;
+  transform: scale(1.01);
+}
+.upload-icon {
+  font-size: 56px;
+  margin-bottom: 16px;
+  display: block;
+  filter: grayscale(0.3);
+  transition: filter var(--transition);
+}
+.upload-zone:hover .upload-icon { filter: grayscale(0); }
+.upload-zone h3 { font-size: 18px; margin-bottom: 6px; }
+.upload-zone p { color: var(--text-dim); font-size: 14px; }
+.upload-hint {
+  margin-top: 16px;
+  display: flex;
+  gap: 24px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.upload-hint span {
+  font-size: 12px; color: var(--text-dim);
+  background: var(--surface2); padding: 4px 12px;
+  border-radius: 12px;
+}
+#fileInput { display: none; }
+
+/* ═══════════════════════════════════════════════════
+   File List
+   ═══════════════════════════════════════════════════ */
+.section {
+  margin-top: 28px;
+}
+.section-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 16px;
+}
+.section-header h2 { font-size: 16px; font-weight: 600; }
+.file-count {
+  font-size: 13px; color: var(--text-dim);
+  background: var(--surface2); padding: 2px 10px; border-radius: 10px;
+}
+
+.file-list { display: flex; flex-direction: column; gap: 8px; }
+
+.file-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  transition: all var(--transition);
+  animation: slideIn 0.3s ease-out;
+}
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.file-card:hover { border-color: #444; }
+
+.file-icon {
+  width: 40px; height: 40px;
+  background: var(--surface2);
+  border-radius: var(--radius-sm);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.file-info { flex: 1; min-width: 0; }
+.file-name {
+  font-size: 14px; font-weight: 500;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.file-meta {
+  font-size: 12px; color: var(--text-dim);
+  display: flex; gap: 12px; margin-top: 2px; flex-wrap: wrap;
+}
+
+.file-actions { flex-shrink: 0; display: flex; align-items: center; gap: 8px; }
+
+/* Badges */
+.badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 11px; font-weight: 600;
+  padding: 3px 10px; border-radius: 10px;
+  letter-spacing: 0.3px;
+}
+.badge-convert { background: rgba(108,92,231,0.2); color: var(--primary-glow); }
+.badge-repair  { background: rgba(253,203,110,0.2); color: var(--warn); }
+.badge-skip    { background: rgba(0,206,201,0.2); color: var(--success); }
+.badge-error   { background: rgba(255,118,117,0.2); color: var(--danger); }
+.badge-utf8    { background: rgba(116,185,255,0.15); color: var(--info); }
+.badge-gbk     { background: rgba(0,206,201,0.15); color: var(--success); }
+.badge-other   { background: rgba(253,203,110,0.15); color: var(--warn); }
+
+/* ═══════════════════════════════════════════════════
+   Buttons
+   ═══════════════════════════════════════════════════ */
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 14px; font-weight: 600;
+  padding: 10px 24px;
+  border: none; border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition);
+  font-family: inherit;
+}
+.btn-primary {
+  background: linear-gradient(135deg, var(--primary), #8b5cf6);
+  color: #fff;
+  box-shadow: 0 4px 16px rgba(108,92,231,0.35);
+}
+.btn-primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 24px rgba(108,92,231,0.5);
+}
+.btn-primary:disabled {
+  opacity: 0.45; cursor: not-allowed; transform: none;
+}
+.btn-success {
+  background: linear-gradient(135deg, #00b894, #00cec9);
+  color: #fff;
+  box-shadow: 0 4px 16px rgba(0,206,201,0.3);
+}
+.btn-success:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 24px rgba(0,206,201,0.45);
+}
+.btn-outline {
+  background: transparent;
+  border: 1.5px solid var(--border);
+  color: var(--text);
+}
+.btn-outline:hover { border-color: var(--primary); color: var(--primary-glow); }
+.btn-sm { padding: 6px 14px; font-size: 12px; }
+.btn-xs { padding: 4px 10px; font-size: 11px; }
+
+.action-bar {
+  display: flex; gap: 12px; margin-top: 20px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* ═══════════════════════════════════════════════════
+   Progress
+   ═══════════════════════════════════════════════════ */
+.progress-bar-wrap {
+  margin-top: 16px;
+  height: 4px;
+  background: var(--surface2);
+  border-radius: 2px;
+  overflow: hidden;
+  display: none;
+}
+.progress-bar-wrap.active { display: block; }
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary), var(--success));
+  border-radius: 2px;
+  width: 0%;
+  transition: width 0.5s ease;
+}
+
+/* ═══════════════════════════════════════════════════
+   Summary Panel
+   ═══════════════════════════════════════════════════ */
+.summary {
+  display: flex; gap: 16px; margin-top: 16px; flex-wrap: wrap;
+  display: none;
+}
+.summary.active { display: flex; }
+.summary-card {
+  flex: 1; min-width: 140px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 16px;
+  text-align: center;
+}
+.summary-card .num {
+  font-size: 28px; font-weight: 700;
+}
+.summary-card .label {
+  font-size: 12px; color: var(--text-dim); margin-top: 4px;
+}
+.num-convert { color: var(--primary-glow); }
+.num-repair  { color: var(--warn); }
+.num-skip    { color: var(--success); }
+
+/* ═══════════════════════════════════════════════════
+   Toast / Spinner
+   ═══════════════════════════════════════════════════ */
+.toast {
+  position: fixed; top: 24px; right: 24px;
+  background: var(--surface2); border: 1px solid var(--border);
+  padding: 14px 20px; border-radius: var(--radius-sm);
+  font-size: 14px; z-index: 999;
+  animation: toastIn 0.3s ease;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+}
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.spinner {
+  display: inline-block; width: 18px; height: 18px;
+  border: 2px solid rgba(255,255,255,0.2);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.hidden { display: none !important; }
+
+/* ═══════════════════════════════════════════════════
+   Empty State
+   ═══════════════════════════════════════════════════ */
+.empty-state {
+  text-align: center; padding: 48px 24px; color: var(--text-dim);
+}
+.empty-state .icon { font-size: 48px; margin-bottom: 12px; }
+
+/* ═══════════════════════════════════════════════════
+   Footer
+   ═══════════════════════════════════════════════════ */
+.footer {
+  text-align: center; padding: 32px;
+  color: var(--text-dim); font-size: 12px;
+  border-top: 1px solid var(--border);
+  margin-top: 48px;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .container { padding: 16px 12px; }
+  .upload-zone { padding: 32px 16px; }
+  .file-card { flex-wrap: wrap; }
+  .action-bar { flex-direction: column; }
+  .action-bar .btn { width: 100%; justify-content: center; }
+}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="header">
+  <div class="header-inner">
+    <div class="logo">
+      <div class="logo-icon">📖</div>
+      <div>
+        <h1>小说编码转换</h1>
+        <span>任意编码 → 纯 GBK · 特殊设备就绪</span>
+      </div>
+    </div>
+    <div class="header-badge" id="statusBadge">⚡ 就绪</div>
+  </div>
+</header>
+
+<!-- Main -->
+<div class="container">
+  <!-- Upload Area -->
+  <div class="upload-zone" id="uploadZone">
+    <span class="upload-icon">📂</span>
+    <h3>拖拽 TXT 文件到此处</h3>
+    <p>或点击选择文件 · 支持批量上传 · UTF-8 / GBK / BIG5 / UTF-16</p>
+    <div class="upload-hint">
+      <span>✅ 自动检测编码</span>
+      <span>🔧 修复非法字节</span>
+      <span>📦 批量下载 ZIP</span>
+    </div>
+    <input type="file" id="fileInput" multiple accept=".txt">
+  </div>
+
+  <!-- File List -->
+  <div class="section hidden" id="fileSection">
+    <div class="section-header">
+      <h2>📋 文件列表</h2>
+      <span class="file-count" id="fileCount">0 个文件</span>
+    </div>
+    <div class="file-list" id="fileList"></div>
+
+    <!-- Action Bar -->
+    <div class="action-bar">
+      <button class="btn btn-primary" id="btnConvert" disabled>
+        🔄 开始转换
+      </button>
+      <button class="btn btn-outline btn-sm" id="btnClear">
+        🗑 清空列表
+      </button>
+      <button class="btn btn-success hidden" id="btnDownload">
+        📥 下载全部 (ZIP)
+      </button>
+      <span style="font-size: 12px; color: var(--text-dim); margin-left: auto;" id="actionHint"></span>
+    </div>
+
+    <!-- Progress -->
+    <div class="progress-bar-wrap" id="progressWrap">
+      <div class="progress-bar-fill" id="progressFill"></div>
+    </div>
+
+    <!-- Summary -->
+    <div class="summary" id="summary"></div>
+  </div>
+</div>
+
+<footer class="footer">
+  Novel Converter · 专为特殊阅读设备设计 · 纯 GBK 编码输出
+</footer>
+
+<!-- Toast Container -->
+<div id="toastContainer"></div>
+
+<script>
+/* ═══════════════════════════════════════════════════
+   State
+   ═══════════════════════════════════════════════════ */
+const STATE = {
+  sessionId: null,
+  files: [],
+  converted: false,
+};
+
+const API = '/api';
+
+/* ═══════════════════════════════════════════════════
+   Helpers
+   ═══════════════════════════════════════════════════ */
+function $(id) { return document.getElementById(id); }
+function $$(sel) { return document.querySelectorAll(sel); }
+
+function formatSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+  if (bytes < 1073741824) return (bytes / 1048576).toFixed(1) + ' MB';
+  return (bytes / 1073741824).toFixed(2) + ' GB';
+}
+
+function toast(msg, duration = 3000) {
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.textContent = msg;
+  $('toastContainer').appendChild(el);
+  setTimeout(() => el.remove(), duration);
+}
+
+function setStatus(text) {
+  $('statusBadge').textContent = text;
+}
+
+/* ═══════════════════════════════════════════════════
+   Upload
+   ═══════════════════════════════════════════════════ */
+async function initSession() {
+  const resp = await fetch(API + '/session', { method: 'POST' });
+  const data = await resp.json();
+  STATE.sessionId = data.session_id;
+}
+
+async function uploadFiles(fileList) {
+  if (!STATE.sessionId) await initSession();
+
+  const form = new FormData();
+  form.append('session_id', STATE.sessionId);
+  for (const f of fileList) {
+    if (f.name.toLowerCase().endsWith('.txt')) {
+      form.append('files', f);
+    }
+  }
+
+  setStatus('⏳ 上传中...');
+  const resp = await fetch(API + '/upload', { method: 'POST', body: form });
+  const data = await resp.json();
+
+  if (data.files && data.files.length > 0) {
+    STATE.files = data.files;
+    renderFileList();
+    toast(`已添加 ${data.files.length} 个文件`);
+    setStatus('✅ ' + data.files.length + ' 个文件');
+  } else {
+    toast('未找到有效的 TXT 文件', 4000);
+  }
+}
+
+/* ═══════════════════════════════════════════════════
+   Render
+   ═══════════════════════════════════════════════════ */
+function renderFileList() {
+  const container = $('fileList');
+  const section = $('fileSection');
+  const btnConvert = $('btnConvert');
+  const btnDownload = $('btnDownload');
+
+  if (STATE.files.length === 0) {
+    section.classList.add('hidden');
+    return;
+  }
+
+  section.classList.remove('hidden');
+  $('fileCount').textContent = STATE.files.length + ' 个文件';
+
+  container.innerHTML = STATE.files.map((f, i) => {
+    const action = f.action;
+    let actionBadge = '';
+    let encBadge = '';
+
+    if (action === 'convert') actionBadge = '<span class="badge badge-convert">🔄 需转换</span>';
+    else if (action === 'repair') actionBadge = '<span class="badge badge-repair">🔧 需修复</span>';
+    else if (action === 'none') actionBadge = '<span class="badge badge-skip">✅ 已就绪</span>';
+
+    if (f.encoding) {
+      const isUtf = f.encoding.includes('UTF-8') || f.encoding.includes('UTF');
+      const isGbk = f.encoding.includes('GBK') || f.encoding.includes('GB2312') || f.encoding.includes('GB18030');
+      if (isUtf) encBadge = '<span class="badge badge-utf8">' + f.encoding + '</span>';
+      else if (isGbk) encBadge = '<span class="badge badge-gbk">' + f.encoding + '</span>';
+      else encBadge = '<span class="badge badge-other">' + f.encoding + '</span>';
+    }
+
+    const issuesHtml = f.issues_count > 0
+      ? `<span style="color:var(--warn)">⚠ ${f.issues_count} 个非法字节</span>`
+      : '';
+
+    return `
+      <div class="file-card">
+        <div class="file-icon">📄</div>
+        <div class="file-info">
+          <div class="file-name" title="${f.name}">${f.name}</div>
+          <div class="file-meta">
+            <span>${formatSize(f.size)}</span>
+            ${encBadge}
+            ${actionBadge}
+            ${issuesHtml}
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  // 按钮状态
+  btnConvert.disabled = STATE.converted;
+  btnConvert.textContent = STATE.converted ? '✅ 转换完成' : '🔄 开始转换';
+  btnDownload.classList.toggle('hidden', !STATE.converted);
+  $('actionHint').textContent = STATE.converted
+    ? '转换完成！点击右侧按钮下载 ZIP 包'
+    : STATE.files.some(f => f.action !== 'none')
+      ? `共 ${STATE.files.filter(f=>f.action!=='none').length} 个文件需要处理`
+      : '所有文件编码已就绪，无需转换';
+}
+
+/* ═══════════════════════════════════════════════════
+   Convert
+   ═══════════════════════════════════════════════════ */
+async function startConvert() {
+  const btn = $('btnConvert');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> 转换中...';
+  setStatus('⏳ 转换中...');
+
+  const progressWrap = $('progressWrap');
+  const progressFill = $('progressFill');
+  progressWrap.classList.add('active');
+  progressFill.style.width = '30%';
+
+  try {
+    const resp = await fetch(API + '/convert', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session_id: STATE.sessionId }),
+    });
+    const data = await resp.json();
+
+    progressFill.style.width = '100%';
+
+    if (data.results) {
+      STATE.converted = true;
+
+      // 更新文件状态
+      for (const r of data.results) {
+        const f = STATE.files.find(x => x.name === r.name);
+        if (f) {
+          f.result = r;
+          if (r.status === 'converted') f.action = 'done';
+          else if (r.status === 'skipped') f.action = 'none';
+          else f.action = 'error';
+        }
+      }
+
+      renderFileList();
+      renderSummary(data.summary);
+      toast(`转换完成：${data.summary.converted} 个转换，${data.summary.skipped} 个跳过`);
+      setStatus('✅ 转换完成');
+    }
+  } catch (e) {
+    toast('转换失败：' + e.message, 5000);
+    setStatus('❌ 失败');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '✅ 转换完成';
+    setTimeout(() => {
+      progressWrap.classList.remove('active');
+      progressFill.style.width = '0%';
+    }, 1000);
+  }
+}
+
+function renderSummary(summary) {
+  const el = $('summary');
+  el.classList.add('active');
+  el.innerHTML = `
+    <div class="summary-card">
+      <div class="num num-convert">${summary.converted}</div>
+      <div class="label">已转换</div>
+    </div>
+    <div class="summary-card">
+      <div class="num num-skip">${summary.skipped}</div>
+      <div class="label">已就绪（无需转换）</div>
+    </div>
+    <div class="summary-card" style="${summary.error ? '' : 'display:none'}">
+      <div class="num" style="color:var(--danger)">${summary.error}</div>
+      <div class="label">失败</div>
+    </div>
+  `;
+}
+
+function downloadZip() {
+  if (!STATE.sessionId) return;
+  window.open(API + '/download/' + STATE.sessionId, '_blank');
+  toast('正在下载 ZIP 文件...');
+}
+
+function clearAll() {
+  STATE.files = [];
+  STATE.converted = false;
+  renderFileList();
+  $('summary').classList.remove('active');
+  $('fileSection').classList.add('hidden');
+  $('btnDownload').classList.add('hidden');
+  setStatus('⚡ 就绪');
+}
+
+/* ═══════════════════════════════════════════════════
+   Events
+   ═══════════════════════════════════════════════════ */
+const uploadZone = $('uploadZone');
+const fileInput = $('fileInput');
+
+uploadZone.addEventListener('click', () => fileInput.click());
+
+uploadZone.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  uploadZone.classList.add('drag-over');
+});
+uploadZone.addEventListener('dragleave', () => {
+  uploadZone.classList.remove('drag-over');
+});
+uploadZone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  uploadZone.classList.remove('drag-over');
+  if (e.dataTransfer.files.length > 0) {
+    uploadFiles(e.dataTransfer.files);
+  }
+});
+
+fileInput.addEventListener('change', () => {
+  if (fileInput.files.length > 0) {
+    uploadFiles(fileInput.files);
+  }
+});
+
+$('btnConvert').addEventListener('click', startConvert);
+$('btnDownload').addEventListener('click', downloadZip);
+$('btnClear').addEventListener('click', clearAll);
+
+/* ═══════════════════════════════════════════════════
+   Init
+   ═══════════════════════════════════════════════════ */
+initSession();
+// 健康检查
+fetch(API + '/health')
+  .then(r => r.json())
+  .then(d => setStatus('⚡ 就绪 · ' + new Date(d.time).toLocaleTimeString()))
+  .catch(() => setStatus('⚠ 服务未连接'));
+</script>
+</body>
+</html>
