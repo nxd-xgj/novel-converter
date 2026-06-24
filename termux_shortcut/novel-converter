@@ -1,0 +1,10 @@
+#!/data/data/com.termux/files/usr/bin/bash
+# Termux 桌面快捷方式脚本
+# 放到 ~/.shortcuts/ 目录下即可在桌面出现图标
+# 
+# 创建方式：
+#   mkdir -p ~/.shortcuts
+#   cp termux_shortcut/novel-converter ~/.shortcuts/
+#   chmod +x ~/.shortcuts/novel-converter
+
+curl -fsSL https://raw.githubusercontent.com/YOUR_USER/YOUR_REPO/main/setup.sh | bash

@@ -1,0 +1,28 @@
+# 运行时生成的文件
+workspace/
+uploads/
+*.log
+*.pid
+server.log
+.server.pid
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# 构建产物
+*.spec
+*.zip
+*.tar.gz
+
+# IDE
+.vscode/
+.idea/
+
+# 系统文件
+.DS_Store
+Thumbs.db
