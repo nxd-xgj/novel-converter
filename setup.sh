@@ -13,7 +13,7 @@
 set -e
 
 # ─── 配置（请修改为你的 GitHub 仓库地址）─────────────────
-GITHUB_REPO="https://github.com/YOUR_USER/YOUR_REPO.git"
+GITHUB_REPO="https://github.com/nxd-xgj/novel-converter.git"
 PROJECT_NAME="novel-converter"
 PROJECT_DIR="$HOME/$PROJECT_NAME"
 SERVER_PORT=5000

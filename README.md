@@ -9,7 +9,7 @@
 ## ⚡ 一行命令安装（Termux 安卓手机）
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/YOUR_USER/YOUR_REPO/main/setup.sh | bash
+curl -fsSL https://raw.githubusercontent.com/nxd-xgj/novel-converter/main/setup.sh | bash
 ```
 
 首次运行自动安装 Python、pip、Flask、git clone 项目，之后每次运行自动 `git pull` 更新。
@@ -29,7 +29,7 @@ chmod +x ~/.shortcuts/novel-converter
 
 ```bash
 # 1. 克隆项目
-git clone https://github.com/YOUR_USER/YOUR_REPO.git
+git clone https://github.com/nxd-xgj/novel-converter.git
 cd YOUR_REPO
 
 # 2. 安装依赖
@@ -73,7 +73,7 @@ python backend.py
 如需修改 GitHub 仓库地址，编辑 `setup.sh` 第 15 行：
 
 ```bash
-GITHUB_REPO="https://github.com/YOUR_USER/YOUR_REPO.git"
+GITHUB_REPO="https://github.com/nxd-xgj/novel-converter.git"
 ```
 
 改为你自己的仓库地址即可。

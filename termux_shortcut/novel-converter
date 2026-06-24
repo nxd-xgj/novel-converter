@@ -7,4 +7,4 @@
 #   cp termux_shortcut/novel-converter ~/.shortcuts/
 #   chmod +x ~/.shortcuts/novel-converter
 
-curl -fsSL https://raw.githubusercontent.com/YOUR_USER/YOUR_REPO/main/setup.sh | bash
+curl -fsSL https://raw.githubusercontent.com/nxd-xgj/novel-converter/main/setup.sh | bash
