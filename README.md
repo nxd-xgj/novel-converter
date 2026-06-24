@@ -1,6 +1,8 @@
 # 小说编码批量转换工具
 
 [![Platform](https://img.shields.io/badge/Platform-Termux%20%7C%20Linux%20%7C%20Windows%20%7C%20macOS-green)]()
+[![GitHub Release](https://img.shields.io/github/v/release/nxd-xgj/novel-converter)](https://github.com/nxd-xgj/novel-converter/releases)
+[![GitHub License](https://img.shields.io/github/license/nxd-xgj/novel-converter)](LICENSE)
 [![Python](https://img.shields.io/badge/Python-3.8%2B-blue)]()
 [![License](https://img.shields.io/badge/License-MIT-yellow)]()
 
@@ -30,7 +32,7 @@ chmod +x ~/.shortcuts/novel-converter
 ```bash
 # 1. 克隆项目
 git clone https://github.com/nxd-xgj/novel-converter.git
-cd YOUR_REPO
+cd novel-converter
 
 # 2. 安装依赖
 pip install flask
@@ -55,6 +57,16 @@ python backend.py
 4. **批量处理**：支持同时上传多个 TXT 文件
 5. **ZIP 打包下载**：转换完成后一键下载全部文件
 
+## 📦 预编译包
+
+不想装 Python？直接用编译好的可执行文件：
+
+| 平台 | 文件 | 说明 |
+|------|------|------|
+| 🐧 **Linux** | [`releases/linux/NovelConverter`](releases/linux/) | 25MB 单文件，`./NovelConverter` 开箱即用 |
+| 🪟 **Windows** | [`releases/windows/`](releases/windows/) | 运行 `build_windows.bat` 自动编译 EXE |
+| 📱 **Android** | [`releases/android/`](releases/android/) | Termux 脚本 / Buildozer APK 构建配置 |
+
 ## 📂 项目结构
 
 ```
@@ -65,6 +77,10 @@ python backend.py
 │   └── index.html        # Web 前端界面（拖拽上传 + 进度展示）
 ├── termux_shortcut/
 │   └── novel-converter   # Termux 桌面小组件脚本
+├── releases/
+│   ├── linux/            # Linux 预编译二进制
+│   ├── windows/          # Windows 构建脚本
+│   └── android/          # Android APK 构建配置 + Termux 脚本
 └── README.md
 ```
 
