@@ -50,8 +50,8 @@ jobs:
             buildozer-${{ runner.os }}-
 
       - name: 编译 APK
-        working-directory: ./android
         run: |
+          cd android
           python3 -m buildozer android debug 2>&1
 
       - name: 上传 APK（Artifact）
