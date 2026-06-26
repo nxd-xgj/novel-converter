@@ -51,8 +51,8 @@ class MainActivity : AppCompatActivity() {
         binding.fileList.layoutManager = LinearLayoutManager(this)
         binding.fileList.adapter = adapter
 
-        // 文件选择
-        binding.dropZone.setOnClickListener { filePicker.launch(arrayOf("text/plain", "*/*")) }
+        // 文件选择：只选 TXT
+        binding.dropZone.setOnClickListener { filePicker.launch(arrayOf("text/plain")) }
 
         // 压缩空行
         binding.optCompact.setOnCheckedChangeListener { _, _ -> }
@@ -63,7 +63,17 @@ class MainActivity : AppCompatActivity() {
         }
 
         // 开始转换
-        binding.btnConvert.setOnClickListener { startConversion() }
+        binding.btnConvert.setOnClickListener {
+            if (adapter.items.isEmpty()) {
+                Toast.makeText(this, "请先选择 TXT 文件", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            if (adapter.items.any { it.encoding == null }) {
+                Toast.makeText(this, "正在检测编码，请稍候…", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            startConversion()
+        }
 
         // 清空
         binding.btnClear.setOnClickListener {
@@ -86,7 +96,19 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun handleSelectedFiles(uris: List<Uri>) {
-        val newItems = uris.mapNotNull { uri -> resolveFileInfo(uri) }
+        val newItems = mutableListOf<FileAdapter.FileItem>()
+        var skipped = 0
+        for (uri in uris) {
+            val item = resolveFileInfo(uri)
+            if (item != null && item.name.lowercase().endsWith(".txt")) {
+                newItems.add(item)
+            } else {
+                skipped++
+            }
+        }
+        if (skipped > 0) {
+            Toast.makeText(this, "已跳过 $skipped 个非 TXT 文件", Toast.LENGTH_SHORT).show()
+        }
         if (newItems.isEmpty()) return
 
         adapter.addAll(newItems)
@@ -259,12 +281,27 @@ class MainActivity : AppCompatActivity() {
     // ═══════════════════════════════════════════════
     private fun updateUI() {
         val hasFiles = adapter.items.isNotEmpty()
-        val allDetected = adapter.items.all { it.encoding != null }
+        val detectingCount = adapter.items.count { it.encoding == null }
+        val allDetected = hasFiles && detectingCount == 0
 
         binding.actionBar.isVisible = hasFiles
         binding.fileList.isVisible = hasFiles
-        binding.btnConvert.isEnabled = allDetected
         binding.dropZone.isVisible = !hasFiles
+
+        when {
+            !hasFiles -> {
+                binding.btnConvert.isEnabled = false
+                binding.btnConvert.text = "开始转换"
+            }
+            detectingCount > 0 -> {
+                binding.btnConvert.isEnabled = false
+                binding.btnConvert.text = "检测编码中… ($detectingCount)"
+            }
+            else -> {
+                binding.btnConvert.isEnabled = true
+                binding.btnConvert.text = "开始转换"
+            }
+        }
     }
 
     private fun formatSize(bytes: Long): String = when {
