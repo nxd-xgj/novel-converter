@@ -1,81 +1,36 @@
-# 小说编码批量转换工具
+# 小说编码转换
 
-[![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20Android-green)]()
-[![Python](https://img.shields.io/badge/Python-3.8%2B-blue)]()
-[![License](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
-[![Release](https://img.shields.io/github/v/release/nxd-xgj/novel-converter)](https://github.com/nxd-xgj/novel-converter/releases)
+一个纯浏览器端工具，将 TXT 小说转换为纯 GBK 编码，适配老旧电子书阅读器。
 
-任意中文编码（UTF-8 / GBK / BIG5 / UTF-16）TXT 小说转为纯 GBK，适配老旧阅读设备。
+## 特点
 
-逐个字符提取重编码，自动剔除 Emoji 和不可见控制字符，连续空行压缩，大文件按章节分卷。
+- 🚀 **零安装**：单个 HTML 文件，拖进浏览器就能用
+- 📵 **本地运行**：不上传服务器，完全在本地处理
+- 🎯 **自动检测编码**：支持 UTF-8、GBK、GB2312、GB18030、BIG5 等
+- 📦 **批量打包**：多文件转 ZIP 下载
+- ✂️ **实用功能**：压缩空行、按体积分卷
+- 📱 **移动端友好**：Android/iOS 浏览器均可用
 
-## 一键启动
+## 使用方法
 
-**Windows**
+1. 下载 `standalone.html`
+2. 用浏览器打开
+3. 拖入 TXT 文件
+4. 点击「开始转换」→ 自动下载 ZIP
 
-打开 PowerShell，粘贴这一行回车：
-
-```powershell
-powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/nxd-xgj/novel-converter/main/install.ps1 | iex"
-```
-
-自动安装 Python、Flask，下载最新代码并启动服务。浏览器自动打开。
-
-**Linux**
-
-下载 [NovelConverter](https://github.com/nxd-xgj/novel-converter/releases/latest/download/NovelConverter)，无需 Python 环境。
-
-```bash
-chmod +x NovelConverter
-./NovelConverter
-```
-
-**Android**
-
-APK 由 GitHub Actions 自动编译，无需自己搭建环境：
-- 每次推代码 → Actions 自动跑 → APK 以 Artifact 形式产出
-- 发布 Release → APK 自动挂载到 Release 页面
-
-手动编译备选（如需本地编译）：
-
-```bash
-unzip novel_android_project.zip
-cd novel_android
-bash build_apk.sh
-```
-
-启动后浏览器自动打开 `http://localhost:5000`，拖拽 TXT 文件即可批量转换。
-
-## Release 发行版
-
-前往 [Releases](https://github.com/nxd-xgj/novel-converter/releases) 下载预编译成品：
-
-- `NovelConverter` — Linux x86_64 单文件，自带运行时
-- `install.ps1` — Windows PowerShell 一键安装脚本
+> 也可托管在 GitHub Pages 直接访问：`https://nxd-xgj.github.io/novel-converter/standalone.html`
 
 ## 工作原理
 
-1. 解码：遍历 UTF-8 / GBK / BIG5 / UTF-16 等所有编码，取中文字符最多的结果
-2. 清洗：逐字尝试编码为 GBK，不兼容的字符丢弃
-3. 压缩：连续空行合并为一行，剔除不可见控制字符
-4. 分卷：超过指定大小自动在段落边界切分
-5. 输出：ZIP 打包下载，内含处理报告
-
-## 手动运行
-
-```bash
-pip install flask
-python backend.py
+```
+拖入文件 → JS 检测编码 → 解码为文本 → 压缩/分卷 → 用内置 GBK 编码表编码 → 打包 ZIP 下载
 ```
 
-## 文件结构
+内置 14287 条 Unicode→GBK 映射表，二分查找 O(log N)，10MB 文件约 2 秒完成。
 
-```
-├── backend.py          Flask 后端与编码引擎
-├── templates/
-│   └── index.html      Web 界面
-├── setup.sh            Termux 安装脚本
-├── install.ps1         Windows PowerShell 安装脚本
-├── termux_shortcut/    Termux 桌面快捷方式
-└── requirements.txt
-```
+## 技术栈
+
+纯前端，无后端依赖：
+- 原生 FileReader + TextDecoder（编码检测）
+- 自研 GBK 编码引擎（14K 条目二分查找表）
+- JSZip CDN（打包下载）
