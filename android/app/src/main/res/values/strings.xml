@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">小说编码转换</string>
+    <string name="drop_hint">点击选择 TXT 文件</string>
+    <string name="drop_sub">支持 UTF-8 / GBK / BIG5 编码检测，批量转纯 GBK</string>
+    <string name="btn_convert">开始转换</string>
+    <string name="btn_clear">清空列表</string>
+    <string name="opt_compact">压缩空行</string>
+    <string name="opt_split">分卷</string>
+    <string name="opt_split_unit">MB</string>
+    <string name="status_ready">就绪</string>
+    <string name="status_detecting">检测编码中…</string>
+    <string name="status_converting">转换中…</string>
+    <string name="status_done">完成</string>
+    <string name="status_error">出错</string>
+    <string name="encoding_utf8">UTF-8</string>
+    <string name="encoding_gbk">GBK</string>
+    <string name="encoding_big5">BIG5</string>
+    <string name="encoding_unknown">未知</string>
+    <string name="info_no_server">本地运算 · 不上传服务器 · 离线可用</string>
+    <string name="label_dropped">丢弃</string>
+    <string name="label_output">输出</string>
+    <string name="label_files">个文件</string>
+</resources>
