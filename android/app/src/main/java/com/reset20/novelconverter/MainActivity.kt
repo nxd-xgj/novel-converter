@@ -24,8 +24,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: com.reset20.novelconverter.databinding.ActivityMainBinding
     private lateinit var adapter: FileAdapter
 
-    private val contentResolver: ContentResolver get() = contentResolver
-
     // 文件选择器
     private val filePicker = registerForActivityResult(
         ActivityResultContracts.OpenMultipleDocuments()
