@@ -41,6 +41,9 @@ jobs:
         working-directory: android
         run: chmod +x gradlew
 
+      - name: Generate debug keystore
+        run: keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Debug,O=Android,C=US" -noprompt
+
       - name: Build Release APK
         working-directory: android
         run: ./gradlew assembleRelease --no-daemon
