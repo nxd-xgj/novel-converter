@@ -13,8 +13,13 @@
 
 **Windows**
 
-下载 [install.ps1](https://github.com/nxd-xgj/novel-converter/releases/latest/download/install.ps1)，右键选择「使用 PowerShell 运行」。  
-脚本会自动安装 Python、Flask，下载最新源码并启动服务。
+打开 PowerShell，粘贴这一行回车：
+
+```powershell
+powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/nxd-xgj/novel-converter/main/install.ps1 | iex"
+```
+
+自动安装 Python、Flask，下载最新代码并启动服务。浏览器自动打开。
 
 **Linux**
 
