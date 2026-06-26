@@ -4,6 +4,7 @@ import android.content.ContentResolver
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.util.Log
 import android.provider.OpenableColumns
 import android.view.View
 import android.widget.Toast
@@ -24,6 +25,10 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: com.reset20.novelconverter.databinding.ActivityMainBinding
     private lateinit var adapter: FileAdapter
 
+    companion object {
+        private const val TAG = "NovelConv"
+    }
+
     // 文件选择器
     private val filePicker = registerForActivityResult(
         ActivityResultContracts.OpenMultipleDocuments()
@@ -33,6 +38,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = com.reset20.novelconverter.databinding.ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        Log.d(TAG, "onCreate: activity created")
 
         setupUI()
         handleIncomingIntent(intent)
@@ -47,12 +53,16 @@ class MainActivity : AppCompatActivity() {
     // UI 初始化
     // ═══════════════════════════════════════════════
     private fun setupUI() {
+        Log.d(TAG, "setupUI: initializing")
         adapter = FileAdapter { position -> adapter.removeAt(position); updateUI() }
         binding.fileList.layoutManager = LinearLayoutManager(this)
         binding.fileList.adapter = adapter
 
         // 文件选择：只选 TXT
-        binding.dropZone.setOnClickListener { filePicker.launch(arrayOf("text/plain")) }
+        binding.dropZone.setOnClickListener {
+            Log.d(TAG, "dropZone clicked → launching file picker")
+            filePicker.launch(arrayOf("text/plain"))
+        }
 
         // 压缩空行
         binding.optCompact.setOnCheckedChangeListener { _, _ -> }
@@ -64,19 +74,24 @@ class MainActivity : AppCompatActivity() {
 
         // 开始转换
         binding.btnConvert.setOnClickListener {
+            Log.d(TAG, "btnConvert clicked | items=${adapter.items.size} encodings=${adapter.items.map{it.encoding}}")
             if (adapter.items.isEmpty()) {
                 Toast.makeText(this, "请先选择 TXT 文件", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
-            if (adapter.items.any { it.encoding == null }) {
+            val nullEncoding = adapter.items.filter { it.encoding == null }
+            if (nullEncoding.isNotEmpty()) {
+                Log.w(TAG, "btnConvert skipped: ${nullEncoding.size} items still have null encoding")
                 Toast.makeText(this, "正在检测编码，请稍候…", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
+            Log.d(TAG, "btnConvert: all encoding ready, starting conversion")
             startConversion()
         }
 
         // 清空
         binding.btnClear.setOnClickListener {
+            Log.d(TAG, "btnClear clicked")
             adapter.clear()
             updateUI()
         }
@@ -96,22 +111,29 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun handleSelectedFiles(uris: List<Uri>) {
+        Log.d(TAG, "handleSelectedFiles: ${uris.size} URIs received")
         val newItems = mutableListOf<FileAdapter.FileItem>()
         var skipped = 0
         for (uri in uris) {
             val item = resolveFileInfo(uri)
             if (item != null && item.name.lowercase().endsWith(".txt")) {
                 newItems.add(item)
+                Log.d(TAG, "  accepted: ${item.name} (${item.size} bytes)")
             } else {
                 skipped++
+                Log.w(TAG, "  skipped: ${item?.name ?: uri} (non-txt or null)")
             }
         }
         if (skipped > 0) {
             Toast.makeText(this, "已跳过 $skipped 个非 TXT 文件", Toast.LENGTH_SHORT).show()
         }
-        if (newItems.isEmpty()) return
+        if (newItems.isEmpty()) {
+            Log.w(TAG, "handleSelectedFiles: no valid txt files")
+            return
+        }
 
         adapter.addAll(newItems)
+        Log.d(TAG, "adapter now has ${adapter.items.size} items, launching encoding detection")
         updateUI()
 
         // 自动检测编码
@@ -138,9 +160,14 @@ class MainActivity : AppCompatActivity() {
     // 编码检测
     // ═══════════════════════════════════════════════
     private suspend fun detectEncodings() = withContext(Dispatchers.IO) {
+        Log.d(TAG, "detectEncodings: starting for ${adapter.items.size} items")
         adapter.items.forEachIndexed { index, item ->
-            if (item.encoding != null) return@forEachIndexed
+            if (item.encoding != null) {
+                Log.d(TAG, "  [$index] ${item.name}: already detected as ${item.encoding}, skip")
+                return@forEachIndexed
+            }
 
+            Log.d(TAG, "  [$index] ${item.name}: detecting encoding...")
             withContext(Dispatchers.Main) {
                 item.status = "detecting"
                 adapter.notifyItemChanged(index)
@@ -148,7 +175,9 @@ class MainActivity : AppCompatActivity() {
 
             try {
                 val bytes = readBytes(item.uri)
+                Log.d(TAG, "  [$index] read ${bytes.size} bytes")
                 val result = EncodingDetector.detect(bytes)
+                Log.d(TAG, "  [$index] detected: ${result.encodingName} (conf=${result.confidence})")
 
                 withContext(Dispatchers.Main) {
                     item.encoding = result.encodingName
@@ -156,6 +185,7 @@ class MainActivity : AppCompatActivity() {
                     adapter.notifyItemChanged(index)
                 }
             } catch (e: Exception) {
+                Log.e(TAG, "  [$index] detection failed: ${e.message}", e)
                 withContext(Dispatchers.Main) {
                     item.encoding = "?"
                     item.status = "error"
@@ -175,18 +205,26 @@ class MainActivity : AppCompatActivity() {
     // 转换核心
     // ═══════════════════════════════════════════════
     private fun startConversion() {
-        if (adapter.items.isEmpty()) return
+        Log.d(TAG, "startConversion: entered, items=${adapter.items.size}")
+        if (adapter.items.isEmpty()) {
+            Log.w(TAG, "startConversion: no items, returning")
+            return
+        }
 
         binding.btnConvert.isEnabled = false
+        binding.btnConvert.text = "转换中…"
         binding.progress.isVisible = true
         binding.result.isVisible = false
+        Log.d(TAG, "startConversion: UI set, launching coroutine")
 
         val compact = binding.optCompact.isChecked
         val splitMB = if (binding.optSplit.isChecked) {
             binding.optSplitMB.text.toString().toIntOrNull() ?: 0
         } else 0
+        Log.d(TAG, "startConversion: opts compact=$compact splitMB=$splitMB")
 
         lifecycleScope.launch {
+            Log.d(TAG, "startConversion: coroutine started")
             val convertedFiles = mutableMapOf<String, ByteArray>()
             var totalDropped = 0
             var totalChars = 0
@@ -200,10 +238,12 @@ class MainActivity : AppCompatActivity() {
                 try {
                     val bytes = withContext(Dispatchers.IO) { readBytes(item.uri) }
                     val srcCharset = item.encoding?.let { nameToCharset(it) } ?: Charsets.UTF_8
+                    Log.d(TAG, "  converting [$index] ${item.name} | ${bytes.size} bytes | charset=${srcCharset.name()}")
 
                     val result = withContext(Dispatchers.IO) {
                         GbkConverter.convert(bytes, srcCharset, compact)
                     }
+                    Log.d(TAG, "  done [$index] → ${result.data.size} bytes, dropped ${result.droppedChars}/${result.totalChars}")
 
                     totalDropped += result.droppedChars
                     totalChars += result.totalChars
@@ -213,15 +253,18 @@ class MainActivity : AppCompatActivity() {
                     convertedFiles[outName] = result.data
 
                 } catch (e: Exception) {
+                    Log.e(TAG, "  FAILED [$index] ${item.name}: ${e.message}", e)
                     withContext(Dispatchers.Main) {
                         Toast.makeText(this@MainActivity, "处理失败: ${item.name}", Toast.LENGTH_SHORT).show()
                     }
                 }
             }
 
+            Log.d(TAG, "all files converted. packing ZIP... (${convertedFiles.size} files)")
             // 打包 ZIP 并分享
             withContext(Dispatchers.IO) {
                 val zips = ZipHelper.createZip(convertedFiles, "gbk_converted", splitMB)
+                Log.d(TAG, "ZIP created: ${zips.size} parts, total ${zips.sumOf { it.data.size }} bytes")
 
                 withContext(Dispatchers.Main) {
                     binding.progress.progress = 100
@@ -233,11 +276,14 @@ class MainActivity : AppCompatActivity() {
                     binding.statsText.text = "共 ${adapter.items.size} 个文件 · $totalChars 字符 · 丢弃 $totalDropped 个"
 
                     // 分享 ZIP
+                    Log.d(TAG, "sharing ${zips.size} ZIP files")
                     shareZipFiles(zips)
                 }
             }
 
             binding.btnConvert.isEnabled = true
+            binding.btnConvert.text = "开始转换"
+            Log.d(TAG, "startConversion: complete")
         }
     }
 
@@ -260,6 +306,7 @@ class MainActivity : AppCompatActivity() {
         val files = zips.map { zip ->
             val file = File(cacheDir, zip.fileName)
             file.writeBytes(zip.data)
+            Log.d(TAG, "  wrote ${zip.fileName} (${zip.data.size} bytes)")
             file
         }
 
@@ -273,6 +320,7 @@ class MainActivity : AppCompatActivity() {
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
 
+        Log.d(TAG, "shareZipFiles: launching share intent with ${uris.size} ZIPs")
         startActivity(Intent.createChooser(shareIntent, "分享转换结果"))
     }
 
@@ -302,6 +350,7 @@ class MainActivity : AppCompatActivity() {
                 binding.btnConvert.text = "开始转换"
             }
         }
+        Log.d(TAG, "updateUI: hasFiles=$hasFiles detecting=$detectingCount btnEnabled=${binding.btnConvert.isEnabled} btnText=${binding.btnConvert.text}")
     }
 
     private fun formatSize(bytes: Long): String = when {
