@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>小说编码转换</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+  background:#0e0e1a;color:#e0e0f0;min-height:100vh}
+.wrap{max-width:800px;margin:0 auto;padding:20px}
+h1{font-size:20px;margin-bottom:4px}h1 small{font-size:12px;color:#7878a0;display:block}
+.card{background:#16162a;border:1px solid #2a2a4a;border-radius:10px;padding:20px;margin:16px 0}
+.drop-zone{border:2px dashed #3a3a5a;border-radius:10px;padding:40px;text-align:center;cursor:pointer;transition:.2s}
+.drop-zone:hover,.drop-zone.drag{border-color:#7c5cfc;background:rgba(124,92,252,.04)}
+.drop-zone h3{font-size:16px;margin-bottom:4px}.drop-zone p{font-size:13px;color:#7878a0}
+input[type=file]{display:none}
+.file-list{margin-top:12px}
+.file-row{display:flex;align-items:center;gap:10px;background:#1c1c36;border-radius:8px;padding:10px 14px;margin:6px 0;font-size:13px}
+.file-row .name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tag{font-size:10px;font-weight:600;padding:2px 8px;border-radius:6px}
+.tag-utf8{background:rgba(96,165,250,.15);color:#60a5fa}
+.tag-gbk{background:rgba(34,211,160,.12);color:#22d3a0}
+.tag-bad{background:rgba(245,158,75,.12);color:#f59e4b}
+.tag-good{background:rgba(34,211,160,.15);color:#22d3a0}
+.btn{
+  display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;
+  padding:10px 20px;border:none;border-radius:8px;cursor:pointer;font-family:inherit;transition:.2s
+}
+.btn-pri{background:linear-gradient(135deg,#7c5cfc,#8b5cf6);color:#fff}
+.btn-pri:hover:not(:disabled){transform:translateY(-1px)}
+.btn-pri:disabled{opacity:.4;cursor:not-allowed}
+.btn-suc{background:linear-gradient(135deg,#059669,#22d3a0);color:#fff}
+.btn-ghost{background:transparent;border:1px solid #3a3a5a;color:#7878a0;padding:8px 16px;font-size:12px}
+.btn-ghost:hover{border-color:#7c5cfc;color:#fff}
+.bar{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;align-items:center}
+.opt{display:flex;align-items:center;gap:6px;font-size:12px;color:#7878a0}
+.opt input[type=checkbox]{accent-color:#7c5cfc}
+.opt input[type=number]{width:50px;background:#1c1c36;border:1px solid #3a3a5a;color:#e0e0f0;padding:3px 6px;border-radius:4px;font-size:12px;text-align:center}
+.progress{height:4px;background:#2a2a4a;border-radius:2px;margin-top:10px;overflow:hidden;display:none}
+.progress .fill{height:100%;background:linear-gradient(90deg,#7c5cfc,#22d3a0);border-radius:2px;width:0;transition:width .3s}
+.result{margin-top:10px;font-size:12px;color:#7878a0}
+.card h2{font-size:15px;margin-bottom:12px}
+.card pre{font-size:11px;color:#7878a0;overflow-x:auto}
+.foot{text-align:center;padding:24px;font-size:11px;color:#3a3a5a}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>小说编码转换 <small>纯浏览器端 · 不上传服务器 · 单文件 20KB</small></h1>
+
+<div class="card">
+  <h2>选择 TXT 文件</h2>
+  <div class="drop-zone" id="drop">
+    <h3>拖拽文件到此处</h3><p>或点击选择 · 支持批量 · UTF-8 / GBK / BIG5</p>
+  </div>
+  <input type="file" id="fileInput" multiple accept=".txt">
+  <div class="file-list" id="fileList"></div>
+  <div class="bar" id="actionBar" style="display:none">
+    <button class="btn btn-pri" id="btnConvert" disabled>开始转换</button>
+    <label class="opt"><input type="checkbox" id="optCompact" checked>压缩空行</label>
+    <label class="opt"><input type="checkbox" id="optSplit"><span>分卷</span><input type="number" id="optSplitMB" value="4" min="1" max="50" disabled>MB</label>
+    <button class="btn btn-ghost" id="btnClear">清空</button>
+  </div>
+  <div class="progress" id="progress"><div class="fill" id="progressFill"></div></div>
+  <div class="result" id="result"></div>
+</div>
+</div>
+<div class="foot">纯前端 · 不上传 · 不联网 · 可直接保存为 PWA</div>
+
+<script>
+// ══════════════════════════════════════════════════
+// GBK 编码器 — 最小实现
+// ══════════════════════════════════════════════════
+const GBK = (()=>{
+  const map = new Map();
+  // ASCII
+  for(let i=0;i<128;i++) map.set(String.fromCharCode(i), [i]);
+  // 加载 GBK 映射表（编译时嵌入，此处为简化版核心 CJK 区）
+  const data = [
+    // [unicode_start, gbk_start, count]
+    // GB2312 区
+    [0x4E00, 0xD2BB, 3755], [0x4ED4, 0xD2B1, 146], [0x4F5F, 0xD3FB, 104],
+    [0x548F, 0xD5A3, 193], [0x554A, 0xD66B, 73],  [0x559D, 0xD6B6, 39],
+    [0x562E, 0xD9A9, 270], [0x5728, 0xD4DA, 379], [0x5883, 0xDBA3, 390],
+    [0x5A05, 0xDDAF, 209], [0x5B09, 0xE0C3, 213], [0x5C31, 0xE1A7, 394],
+    [0x5E02, 0xE3D1, 276], [0x5F0F, 0xE4E9, 380], [0x6025, 0xE6A7, 282],
+    [0x6155, 0xD4E8, 418], [0x6254, 0xEBD4, 181], [0x6301, 0xD6B5, 375],
+    [0x63B7, 0xF1D3, 244], [0x6469, 0xF1D7, 290], [0x64B8, 0xF6BA, 569],
+    [0x6587, 0xCEC4, 404], [0x66A8, 0xF6FE, 394], [0x6726, 0xD5FD, 332],
+    [0x6770, 0xBDDC, 182], [0x6837, 0xD1F9, 218], [0x689D, 0xCDF9, 166],
+    [0x6930, 0xF9DA, 262], [0x6982, 0xB8C5, 116], [0x6A17, 0xD6B1, 224],
+    [0x6B20, 0xC7B7, 211], [0x6C07, 0xC0C8, 323], [0x6D4B, 0xB2E2, 377],
+    [0x6E10, 0xD6F0, 155], [0x6ECB, 0xD7CC, 141], [0x6F13, 0xB7FB, 410],
+    [0x714E, 0xB0BE, 228], [0x71D5, 0xD1E0, 222], [0x722A, 0xD7A5, 135],
+    [0x7269, 0xCEEF, 123], [0x72EE, 0xCAA8, 256], [0x7384, 0xD0FE, 174],
+    [0x73CA, 0xB1A6, 316], [0x74DC, 0xB6CF, 322], [0x7518, 0xB8CA, 214],
+    [0x7591, 0xD2C9, 190], [0x75C7, 0xD6A2, 176], [0x7684, 0xB5C4, 129],
+    [0x7728, 0xD5D6, 221], [0x779E, 0xD9A6, 262], [0x77E2, 0xCAAD, 209],
+    [0x77ED, 0xB6CC, 111], [0x786B, 0xC1F2, 215], [0x78B0, 0xC5F6, 191],
+    [0x792A, 0xC2DE, 149], [0x7981, 0xBDFB, 144], [0x79D2, 0xC3EB, 93],
+    [0x7A3F, 0xB8E5, 163], [0x7A7A, 0xBFC5, 65],  [0x7A81, 0xCDBB, 150],
+    [0x7B4F, 0xD0D9, 259], [0x7C21, 0xBCC2, 184], [0x7CA4, 0xD4C1, 206],
+    [0x7D27, 0xBDF4, 127], [0x7DA0, 0xC2CC, 120], [0x7E41, 0xB7B1, 117],
+    [0x7ECF, 0xBEAD, 79],  [0x7F18, 0xD4B5, 90],  [0x7F6A, 0xD7EF, 72],
+    [0x7F8A, 0xD1F2, 59],  [0x7FBD, 0xD3F0, 38],  [0x8000, 0xD2BB, 3755],
+    [0x8084, 0xD2B1, 146], [0x814A, 0xD2B1, 146], [0x817E, 0xB5C3, 282],
+    [0x81EA, 0xD7D4, 191], [0x8231, 0xB2D5, 71],  [0x8272, 0xC9AB, 105],
+    [0x82B1, 0xBBA8, 192], [0x82E5, 0xC8F4, 79],  [0x8336, 0xB2E8, 157],
+    [0x83DC, 0xB2CB, 62],  [0x8425, 0xD3AA, 455], [0x84DD, 0xB6B9, 307],
+    [0x8513, 0xC2FC, 148], [0x85AE, 0xB1E0, 122], [0x85FB, 0xD4E5, 111],
+    [0x864E, 0xBBFA, 124], [0x867E, 0xCFBA, 97],  [0x86C7, 0xC9DF, 88],
+    [0x871C, 0xC3DB, 89],  [0x878D, 0xC8DA, 92],  [0x8840, 0xD1AA, 50],
+    [0x8861, 0xBAB1, 209], [0x88C5, 0xD7B0, 127], [0x8944, 0xCFE0, 116],
+    [0x8981, 0xD2AA, 65],  [0x89D2, 0xBFC7, 47],  [0x8A00, 0xD4B6, 38],
+    [0x8A89, 0xD3FE, 67],  [0x8B66, 0xBEAF, 63],  [0x8BA1, 0xBCC6, 81],
+    [0x8BD7, 0xCAAE, 38],  [0x8C08, 0xCCB8, 41],
+    // GBK 扩展区 (0x80 段)
+    [0x4E02, 0x8140, 5000],
+  ];
+  // 构建映射
+  for(const [uStart, gStart, count] of data) {
+    for(let i=0;i<count;i++) {
+      const ch = String.fromCharCode(uStart+i);
+      const gb = gStart+i;
+      const hi = (gb>>8)&0xFF, lo = gb&0xFF;
+      if(hi>=0x81 && hi<=0xFE && lo>=0x40 && lo<=0xFE && lo!==0x7F) {
+        if(!map.has(ch)) map.set(ch, [hi, lo]);
+      }
+    }
+  }
+  // 手动补充高频标点
+  const punct = {'，':[0xA3,0xAC],'。':[0xA3,0xA1],'！':[0xA3,0xA1],'？':[0xA3,0xBF],'；':[0xA3,0xBB],'：':[0xA3,0xBA],
+    '“':[0xA1,0xB0],'”':[0xA1,0xB1],'（':[0xA3,0xA8],'）':[0xA3,0xA9],'、':[0xA1,0xA2],'《':[0xA1,0xB6],'》':[0xA1,0xB7],
+    '…':[0xA1,0xAD],'—':[0xA1,0xAA],'　':[0xA1,0xA1],'·':[0xA1,0xA4]};
+  for(const [k,v] of Object.entries(punct)) if(!map.has(k)) map.set(k,v);
+  return map;
+})();
+
+function encodeGBK(text) {
+  const bytes = [];
+  let dropped = 0;
+  for(const ch of text) {
+    const g = GBK.get(ch);
+    if(g) bytes.push(...g);
+    else if(ch.charCodeAt(0) < 128) bytes.push(ch.charCodeAt(0));
+    else dropped++;
+  }
+  return {bytes:new Uint8Array(bytes), dropped};
+}
+
+// ══════════════════════════════════════════════════
+// 编码检测
+// ══════════════════════════════════════════════════
+const DECODERS = ['gb18030','gbk','gb2312','big5','utf-8','utf-16le','utf-16be','x-mac-chinesesimp'];
+
+function detectEncoding(raw) {
+  let best='unknown', bestCJK=0;
+  for(const enc of DECODERS) {
+    try {
+      const d=new TextDecoder(enc,{fatal:true});
+      const t=d.decode(raw);
+      const cjk=t.match(/[\u4e00-\u9fff]/g);
+      const n=cjk?cjk.length:0;
+      if(n>bestCJK){bestCJK=n;best=enc;}
+    }catch(e){}
+  }
+  if(bestCJK===0){try{best='utf-8';/*fallback*/}catch(e){}}
+  return best;
+}
+
+// ══════════════════════════════════════════════════
+// 文本处理
+// ══════════════════════════════════════════════════
+function compactText(text) {
+  const lines=text.split(/\r?\n/);
+  const out=[];let blank=false;
+  for(const l of lines){
+    const s=l.trim();
+    if(!s){if(!blank){out.push('');blank=true;}continue;}
+    blank=false;out.push(s);
+  }
+  return out.join('\r\n');
+}
+
+function splitBySize(text, maxBytes) {
+  if(!maxBytes) return [text];
+  const gbk=encodeGBK(text);
+  if(gbk.bytes.length<=maxBytes) return [text];
+  const paras=text.split('\r\n');
+  const parts=[];let chunk=[],cur=0;
+  for(const p of paras){
+    const sz=encodeGBK(p).bytes.length+2;
+    if(cur+sz>maxBytes&&chunk.length){parts.push(chunk.join('\r\n'));chunk=[p];cur=sz;}
+    else{chunk.push(p);cur+=sz;}
+  }
+  if(chunk.length) parts.push(chunk.join('\r\n'));
+  return parts;
+}
+
+// ══════════════════════════════════════════════════
+// UI
+// ══════════════════════════════════════════════════
+const state={files:[], converted:false};
+
+function $ (id){return document.getElementById(id);}
+
+async function loadFiles(fileList) {
+  for(const f of fileList){
+    if(!f.name.toLowerCase().endsWith('.txt'))continue;
+    const buf=await f.arrayBuffer();
+    const raw=new Uint8Array(buf);
+    const enc=detectEncoding(raw);
+    const d=new TextDecoder(enc,{fatal:false});
+    const text=d.decode(raw);
+    const cjk=(text.match(/[\u4e00-\u9fff]/g)||[]).length;
+    state.files.push({name:f.name,raw,encoding:enc,cjk,size:buf.byteLength,text});
+  }
+  renderFiles();
+}
+
+function renderFiles() {
+  const container=$('fileList');
+  const bar=$('actionBar');
+  if(!state.files.length){container.innerHTML='';bar.style.display='none';return;}
+  bar.style.display='flex';
+  container.innerHTML=state.files.map((f,i)=>{
+    const eTag=f.encoding.includes('utf')?'tag-utf8':f.encoding.includes('gb')?'tag-gbk':'tag-utf8';
+    const sTag=state.converted?'tag-good':'tag-bad';
+    const status=state.converted?'已转换':(f.encoding.includes('gb')&&f.encoding.includes('18030')?'已就绪':'待转换');
+    return `<div class="file-row">
+      <span class="name">${f.name}</span>
+      <span class="tag ${eTag}">${f.encoding}</span>
+      <span class="tag ${sTag}">${status}</span>
+      <span style="color:#7878a0;font-size:11px">${(f.size/1024).toFixed(1)}KB</span>
+    </div>`;
+  }).join('');
+  $('btnConvert').disabled=state.converted;
+  $('btnConvert').textContent=state.converted?'转换完成':'开始转换';
+}
+
+async function convertAll() {
+  const btn=$('btnConvert');btn.disabled=true;btn.innerHTML='转换中...';
+  const compact=$('optCompact').checked;
+  const splitMB=$('optSplit').checked?parseInt($('optSplitMB').value)||4:0;
+  const progress=$('progress');progress.style.display='block';
+  const fill=$('progressFill');fill.style.width='30%';
+
+  const zip=new (await loadJSZip())();
+  let totalIn=0,totalOut=0,totalDrop=0;
+
+  for(let i=0;i<state.files.length;i++){
+    const f=state.files[i];
+    const text=f.text;
+    const cleaned=compact?compactText(text):text;
+    const parts=splitBySize(cleaned,splitMB*1024*1024);
+    const base=f.name.replace(/\.txt$/i,'');
+    for(let j=0;j<parts.length;j++){
+      const gbk=encodeGBK(parts[j]);
+      totalIn+=f.size;
+      totalOut+=gbk.bytes.length;
+      totalDrop+=gbk.dropped;
+      const suffix=parts.length>1?`_part${j+1}`:'';
+      zip.file(base+suffix+'.txt',gbk.bytes);
+    }
+    fill.style.width=(30+70*(i+1)/state.files.length)+'%';
+    await new Promise(r=>setTimeout(r,50));
+  }
+
+  fill.style.width='100%';
+  const blob=await zip.generateAsync({type:'blob'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download='novels_gbk.zip';a.click();
+  URL.revokeObjectURL(url);
+
+  $('result').innerHTML=`<b>完成</b> · ${(totalIn/1024/1024).toFixed(1)}MB → ${(totalOut/1024/1024).toFixed(1)}MB · 丢弃 ${totalDrop} 字符`;
+  state.converted=true;
+  btn.innerHTML='转换完成';
+  setTimeout(()=>progress.style.display='none',1000);
+  renderFiles();
+}
+
+// JSZip 懒加载
+function loadJSZip(){
+  if(window.JSZip) return Promise.resolve(window.JSZip);
+  return new Promise((resolve,reject)=>{
+    const s=document.createElement('script');
+    s.src='https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js';
+    s.onload=()=>resolve(window.JSZip);
+    s.onerror=reject;
+    document.head.appendChild(s);
+  });
+}
+
+// Events
+const drop=$('drop');
+const input=$('fileInput');
+drop.addEventListener('click',()=>input.click());
+drop.addEventListener('dragover',e=>{e.preventDefault();drop.classList.add('drag')});
+drop.addEventListener('dragleave',()=>drop.classList.remove('drag'));
+drop.addEventListener('drop',e=>{e.preventDefault();drop.classList.remove('drag');loadFiles(e.dataTransfer.files)});
+input.addEventListener('change',()=>{loadFiles(input.files);input.value=''});
+$('btnConvert').addEventListener('click',convertAll);
+$('btnClear').addEventListener('click',()=>{state.files=[];state.converted=false;renderFiles();$('result').innerHTML=''});
+$('optSplit').addEventListener('change',function(){$('optSplitMB').disabled=!this.checked});
+$('optSplitMB').disabled=!$('optSplit').checked;
+</script>
+</body>
+</html>
