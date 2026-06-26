@@ -26,18 +26,24 @@ jobs:
         with:
           packages: 'platforms;android-34 build-tools;34.0.0'
 
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.5'
+      - name: Download Gradle 8.5
+        run: |
+          cd /tmp
+          wget -q https://services.gradle.org/distributions/gradle-8.5-bin.zip
+          unzip -q gradle-8.5-bin.zip
+          echo "/tmp/gradle-8.5/bin" >> $GITHUB_PATH
 
       - name: Generate Gradle Wrapper
         working-directory: android
         run: gradle wrapper --gradle-version 8.5
 
+      - name: Grant execute permission for gradlew
+        working-directory: android
+        run: chmod +x gradlew
+
       - name: Build Release APK
         working-directory: android
-        run: ./gradlew assembleRelease
+        run: ./gradlew assembleRelease --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
