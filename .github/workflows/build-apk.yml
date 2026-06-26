@@ -16,18 +16,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: 安装系统依赖
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq python3-pip openjdk-17-jdk git zip unzip libtool autoconf automake pkg-config libltdl-dev
+
+      - name: 安装 buildozer
+        run: pip3 install buildozer cython
+
       - name: 编译 APK
-        uses: digreatbrian/buildozer-action@v2
-        with:
-          python-version: 3.11
-          buildozer-cmd: buildozer -v android debug
-          work-dir: ./android
+        working-directory: android
+        run: buildozer android debug
 
       - name: 上传 APK
         uses: actions/upload-artifact@v4
         with:
           name: novel-converter-apk
-          path: ./android/bin/*.apk
+          path: android/bin/*.apk
           retention-days: 90
 
       - name: 挂载到 Release
@@ -36,6 +41,4 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           APK=$(ls android/bin/*.apk 2>/dev/null | head -1)
-          if [ -n "$APK" ]; then
-            gh release upload "${{ github.event.release.tag_name }}" "$APK" --clobber
-          fi
+          [ -n "$APK" ] && gh release upload "${{ github.event.release.tag_name }}" "$APK" --clobber
