@@ -25,10 +25,18 @@ chmod +x NovelConverter
 ./NovelConverter
 ```
 
-**Android (Termux)**
+**Android**
+
+APK 由 GitHub Actions 自动编译，无需自己搭建环境：
+- 每次推代码 → Actions 自动跑 → APK 以 Artifact 形式产出
+- 发布 Release → APK 自动挂载到 Release 页面
+
+手动编译备选（如需本地编译）：
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/nxd-xgj/novel-converter/main/setup.sh | bash
+unzip novel_android_project.zip
+cd novel_android
+bash build_apk.sh
 ```
 
 启动后浏览器自动打开 `http://localhost:5000`，拖拽 TXT 文件即可批量转换。

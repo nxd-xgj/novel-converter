@@ -1,0 +1,72 @@
+name: 编译 APK
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'android/**'
+      - '.github/workflows/build-apk.yml'
+  release:
+    types: [published]
+
+concurrency:
+  group: apk-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装系统依赖
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq \
+            python3 python3-pip python3-venv \
+            openjdk-17-jdk \
+            git zip unzip wget curl
+
+      - name: 安装 buildozer
+        run: |
+          python3 -m pip install --user buildozer cython
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: 缓存 Android SDK / NDK
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.buildozer
+            !~/.buildozer/android/platform
+            ~/.buildozer/android/platform/android-sdk
+            ~/.buildozer/android/platform/android-ndk*
+          key: buildozer-${{ runner.os }}-${{ hashFiles('android/buildozer.spec') }}
+          restore-keys: |
+            buildozer-${{ runner.os }}-
+
+      - name: 编译 APK
+        working-directory: ./android
+        run: |
+          python3 -m buildozer android debug 2>&1
+
+      - name: 上传 APK（Artifact）
+        uses: actions/upload-artifact@v4
+        with:
+          name: novel-converter-apk
+          path: android/bin/*.apk
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: 上传 APK 到 Release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          APK=$(ls android/bin/*.apk 2>/dev/null | head -1)
+          if [ -n "$APK" ]; then
+            gh release upload "${{ github.event.release.tag_name }}" "$APK" --clobber
+            echo "APK 已上传到 Release"
+          fi
