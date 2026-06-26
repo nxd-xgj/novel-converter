@@ -179,7 +179,7 @@ class MainActivity : AppCompatActivity() {
 
                 try {
                     val bytes = withContext(Dispatchers.IO) { readBytes(item.uri) }
-                    val srcCharset = item.encoding?.let { nameToCharset(name) } ?: Charsets.UTF_8
+                    val srcCharset = item.encoding?.let { nameToCharset(it) } ?: Charsets.UTF_8
 
                     val result = withContext(Dispatchers.IO) {
                         GbkConverter.convert(bytes, srcCharset, compact)
