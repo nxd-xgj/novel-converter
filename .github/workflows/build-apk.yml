@@ -34,6 +34,7 @@ jobs:
           echo "/tmp/gradle-8.5/bin" >> $GITHUB_PATH
 
       - name: Generate debug keystore
+        working-directory: android
         run: keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Debug,O=Android,C=US" -noprompt
 
       - name: Generate Gradle Wrapper
