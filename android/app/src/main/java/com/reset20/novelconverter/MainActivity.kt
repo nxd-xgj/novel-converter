@@ -9,6 +9,7 @@ import android.provider.OpenableColumns
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.FileProvider
 import androidx.core.view.isVisible
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -188,7 +189,7 @@ class MainActivity : AppCompatActivity() {
         val uris = files.map { FileProvider.getUriForFile(this, "$packageName.fileprovider", it) }
         val intent = Intent(Intent.ACTION_SEND_MULTIPLE).apply {
             type = "application/zip"
-            putParcelableArrayListExtra(Intent.EXTRA_STREAM, ArrayList(uris))
+            putExtra(Intent.EXTRA_STREAM, java.util.ArrayList<android.os.Parcelable>(uris))
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
         startActivity(Intent.createChooser(intent, "分享"))
