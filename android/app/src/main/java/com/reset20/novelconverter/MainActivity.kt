@@ -8,7 +8,6 @@ import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.provider.OpenableColumns
-import android.view.View
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -37,18 +36,10 @@ class MainActivity : AppCompatActivity() {
 
     /** 输出到 Logcat + 界面底部日志面板 */
     private fun uiLog(msg: String) {
-        uiLog(msg)
-        runOnUiThread {
-            logBuffer.append(msg).append("\n")
-            if (binding.debugLog != null) {
-                binding.debugLog.text = logBuffer.toString()
-                // 自动滚到底部
-                binding.debugLog.post {
-                    (binding.debugLog.parent as? View)?.let { scroll ->
-                        scroll.scrollTo(0, scroll.height)
-                    }
-                }
-            }
+        Log.d(TAG, msg)
+        logBuffer.append(msg).append("\n")
+        if (::binding.isInitialized) {
+            binding.debugLog.text = logBuffer.toString()
         }
     }
 
