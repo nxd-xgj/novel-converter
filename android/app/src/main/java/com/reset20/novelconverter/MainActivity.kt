@@ -208,15 +208,20 @@ class MainActivity : AppCompatActivity() {
     // ── 分享 ──
 
     private fun shareZip(zips: List<ZipHelper.ZipOutput>) {
-        val dir = File(cacheDir, "out").also { it.mkdirs() }
-        val files = zips.map { z -> File(dir, z.fileName).also { it.writeBytes(z.data) } }
-        val uris = files.map { FileProvider.getUriForFile(this, "$packageName.fileprovider", it) }
-        val intent = Intent(Intent.ACTION_SEND_MULTIPLE).apply {
-            type = "application/zip"
-            putExtra(Intent.EXTRA_STREAM, java.util.ArrayList<android.os.Parcelable>(uris))
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        try {
+            val dir = File(cacheDir, "output").also { it.mkdirs() }
+            val files = zips.map { z -> File(dir, z.fileName).also { it.writeBytes(z.data) } }
+            val uris = files.map { FileProvider.getUriForFile(this, "$packageName.fileprovider", it) }
+            val intent = Intent(Intent.ACTION_SEND_MULTIPLE).apply {
+                type = "application/zip"
+                putExtra(Intent.EXTRA_STREAM, java.util.ArrayList<android.os.Parcelable>(uris))
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            startActivity(Intent.createChooser(intent, "分享"))
+        } catch (e: Exception) {
+            log("分享失败: ${e.message}")
+            Toast.makeText(this, "分享失败: ${e.message}", Toast.LENGTH_LONG).show()
         }
-        startActivity(Intent.createChooser(intent, "分享"))
     }
 
     // ── UI ──
