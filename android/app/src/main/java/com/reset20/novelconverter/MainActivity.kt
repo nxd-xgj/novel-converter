@@ -134,44 +134,68 @@ class MainActivity : AppCompatActivity() {
 
     private fun convert() {
         if (adapter.items.isEmpty()) return
+        log("========== 开始转换 ==========")
         binding.btnConvert.isEnabled = false
+        binding.btnConvert.text = "转换中…"
         binding.progress.isVisible = true
+        binding.progress.progress = 0
         binding.result.isVisible = false
         val compact = binding.optCompact.isChecked
 
-        lifecycleScope.launch {
-            val outs = mutableMapOf<String, ByteArray>()
-            for ((i, item) in adapter.items.withIndex()) {
-                withContext(Dispatchers.Main) {
-                    binding.progress.progress = (i * 100 / adapter.items.size)
-                }
-                try {
-                    val raw = withContext(Dispatchers.IO) { readAll(item.uri) }
-                    val cs = item.encoding?.let { nameToCharset(it) } ?: Charsets.UTF_8
-                    val r = withContext(Dispatchers.IO) { GbkConverter.convert(raw, cs, compact) }
-                    val name = item.name.substringBeforeLast(".") + ".txt"
-                    outs[name] = r.data
-                } catch (e: Exception) {
-                    log("失败: ${item.name} — ${e.message}")
-                }
-            }
+        lifecycleScope.launch(Dispatchers.Main) {
+            try {
+                val outs = mutableMapOf<String, ByteArray>()
+                for ((i, item) in adapter.items.withIndex()) {
+                    val pct = i * 100 / adapter.items.size
+                    withContext(Dispatchers.Main) { binding.progress.progress = pct }
+                    log("[${i+1}/${adapter.items.size}] ${item.name} …")
 
-            if (outs.isEmpty()) {
+                    try {
+                        val raw = withContext(Dispatchers.IO) { readAll(item.uri) }
+                        log("  读取 ${raw.size} 字节")
+                        val cs = item.encoding?.let { nameToCharset(it) } ?: Charsets.UTF_8
+                        log("  源编码: ${cs.name()}")
+                        val r = withContext(Dispatchers.IO) { GbkConverter.convert(raw, cs, compact) }
+                        log("  转换完成, ${r.totalChars} 字符, 丢弃 ${r.droppedChars}")
+                        val name = item.name.substringBeforeLast(".") + ".txt"
+                        outs[name] = r.data
+                    } catch (e: Exception) {
+                        log("  ❌ 失败: ${e.javaClass.simpleName}: ${e.message}")
+                    }
+                }
+
+                if (outs.isEmpty()) {
+                    withContext(Dispatchers.Main) {
+                        log("========== 转换完成: 无输出 ==========")
+                        binding.progress.isVisible = false
+                        binding.result.isVisible = true
+                        binding.result.text = "没有可输出的文件"
+                        binding.btnConvert.isEnabled = true
+                        binding.btnConvert.text = "开始"
+                    }
+                    return@launch
+                }
+
+                log("  打包 ZIP …")
+                val zips = withContext(Dispatchers.IO) { ZipHelper.createZip(outs, "gbk") }
                 withContext(Dispatchers.Main) {
+                    binding.progress.progress = 100
+                    log("========== 完成: ${zips.size} 个ZIP ==========")
                     binding.result.isVisible = true
-                    binding.result.text = "没有可输出的文件"
+                    binding.result.text = "完成 — ${zips.size} 个ZIP"
                     binding.btnConvert.isEnabled = true
+                    binding.btnConvert.text = "开始"
+                    shareZip(zips)
                 }
-                return@launch
-            }
-
-            val zips = withContext(Dispatchers.IO) { ZipHelper.createZip(outs, "gbk") }
-            withContext(Dispatchers.Main) {
-                binding.progress.progress = 100
-                binding.result.isVisible = true
-                binding.result.text = "完成 — ${zips.size} 个ZIP"
-                binding.btnConvert.isEnabled = true
-                shareZip(zips)
+            } catch (t: Throwable) {
+                withContext(Dispatchers.Main) {
+                    log("‼ 严重错误: ${t.javaClass.simpleName}: ${t.message}")
+                    binding.progress.isVisible = false
+                    binding.result.isVisible = true
+                    binding.result.text = "出错: ${t.message}"
+                    binding.btnConvert.isEnabled = true
+                    binding.btnConvert.text = "开始"
+                }
             }
         }
     }
