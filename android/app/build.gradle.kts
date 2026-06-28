@@ -8,7 +8,7 @@ android {
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.reset20.novelconverter"
+        applicationId = "com.zjt.zsgs"
         minSdk = 24
         targetSdk = 34
         versionCode = 1
