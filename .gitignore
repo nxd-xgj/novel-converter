@@ -17,5 +17,4 @@ Thumbs.db
 *.zip
 *.tar.gz
 *.exe
-debug.keystore
 *.jks
