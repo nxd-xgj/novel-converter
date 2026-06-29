@@ -1,36 +1,37 @@
 # 小说编码转换
 
-一个纯浏览器端工具，将 TXT 小说转换为纯 GBK 编码，适配老旧电子书阅读器。
+Android APK — 将 TXT 小说转为纯 GBK 编码，适配老旧电子书阅读器。
 
-## 特点
+## 安装
 
-- 🚀 **零安装**：单个 HTML 文件，拖进浏览器就能用
-- 📵 **本地运行**：不上传服务器，完全在本地处理
-- 🎯 **自动检测编码**：支持 UTF-8、GBK、GB2312、GB18030、BIG5 等
-- 📦 **批量打包**：多文件转 ZIP 下载
-- ✂️ **实用功能**：压缩空行、按体积分卷
-- 📱 **移动端友好**：Android/iOS 浏览器均可用
+### GitHub Actions
+每次 push 到 `main` 自动构建，去 [Actions](https://github.com/nxd-xgj/novel-converter/actions) 下载 APK 产物。
+
+### Windows 一键安装
+```powershell
+# 下载最新 APK
+curl -L -o novel-converter.apk https://github.com/nxd-xgj/novel-converter/releases/latest/download/app-release.apk
+# 安装（需 ADB 连接手机）
+adb install novel-converter.apk
+```
+
+### 手动
+直接下载 [Release](https://github.com/nxd-xgj/novel-converter/releases) 中的 APK，传到手机安装。
 
 ## 使用方法
 
-1. 下载 `standalone.html`
-2. 用浏览器打开
-3. 拖入 TXT 文件
-4. 点击「开始转换」→ 自动下载 ZIP
+1. 点选/多选 TXT 文件
+2. 等待编码检测完成
+3. 点「开始」→ 转换后自动弹出分享，发送 ZIP
 
-> 也可托管在 GitHub Pages 直接访问：`https://nxd-xgj.github.io/novel-converter/standalone.html`
+## 构建
 
-## 工作原理
-
+```bash
+cd android
+./gradlew assembleRelease
 ```
-拖入文件 → JS 检测编码 → 解码为文本 → 压缩/分卷 → 用内置 GBK 编码表编码 → 打包 ZIP 下载
-```
-
-内置 14287 条 Unicode→GBK 映射表，二分查找 O(log N)，10MB 文件约 2 秒完成。
+APK 输出至 `app/build/outputs/apk/release/`。
 
 ## 技术栈
 
-纯前端，无后端依赖：
-- 原生 FileReader + TextDecoder（编码检测）
-- 自研 GBK 编码引擎（14K 条目二分查找表）
-- JSZip CDN（打包下载）
+Kotlin + Material 3 + Coroutines + juniversalchardet + GitHub Actions CI

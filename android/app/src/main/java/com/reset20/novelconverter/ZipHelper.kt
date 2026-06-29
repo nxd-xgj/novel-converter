@@ -4,25 +4,14 @@ import java.io.ByteArrayOutputStream
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
-/**
- * ZIP 打包工具
- * - 将转换后的文件打包为 ZIP
- * - 支持按大小分卷（拆分为多个 ZIP）
- */
 object ZipHelper {
 
     data class ZipOutput(
-        val fileName: String,  // 不含路径，如 "novels.zip"
-        val data: ByteArray,   // ZIP 字节
-        val fileCount: Int     // 内含文件数
+        val fileName: String,
+        val data: ByteArray,
+        val fileCount: Int
     )
 
-    /**
-     * 创建 ZIP
-     * @param files Map<文件名, GBK字节内容>
-     * @param zipName ZIP 文件名（不含 .zip）
-     * @param splitMB 分卷大小（MB），0 或负数表示不分卷
-     */
     fun createZip(
         files: Map<String, ByteArray>,
         zipName: String = "converted",
@@ -40,10 +29,8 @@ object ZipHelper {
         var fileCount = 0
 
         for ((name, data) in files) {
-            // 预估 ZIP entry 大小
-            val entrySize = estimateEntrySize(name, data)
+            val entrySize = name.length + data.size + 100L
 
-            // 如果加入此文件会超限，先保存当前卷
             if (currentSize + entrySize > maxBytes && fileCount > 0) {
                 currentZos.close()
                 val partName = if (splitMB > 0) "${zipName}_part${partIndex + 1}" else zipName
@@ -56,7 +43,6 @@ object ZipHelper {
                 fileCount = 0
             }
 
-            // 写入文件
             val entry = ZipEntry(name)
             currentZos.putNextEntry(entry)
             currentZos.write(data)
@@ -66,16 +52,10 @@ object ZipHelper {
             fileCount++
         }
 
-        // 最后一个卷
         currentZos.close()
         val partName = if (splitMB > 0 && partIndex > 0) "${zipName}_part${partIndex + 1}" else zipName
         results.add(ZipOutput("$partName.zip", currentBos.toByteArray(), fileCount))
 
         return results
-    }
-
-    private fun estimateEntrySize(name: String, data: ByteArray): Long {
-        // 粗略估计：文件名 + 数据 + ZIP 元数据（~100 bytes）
-        return name.length + data.size + 100L
     }
 }

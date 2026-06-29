@@ -3,20 +3,14 @@ package com.reset20.novelconverter
 import org.mozilla.universalchardet.UniversalDetector
 import java.nio.charset.Charset
 
-/**
- * 编码检测器，使用 Mozilla UniversalCharsetDetection
- * 针对中文小说常用编码做了增强
- */
 object EncodingDetector {
 
-    /** 检测到的编码信息 */
     data class DetectResult(
         val charset: Charset,
-        val encodingName: String,  // 显示名
-        val confidence: Float      // 0~1 置信度
+        val encodingName: String,
+        val confidence: Float
     )
 
-    /** 常见的编码别名映射 */
     private val charsetAliases = mapOf(
         "gb2312" to "GBK",
         "gb18030" to "GBK",
@@ -33,18 +27,14 @@ object EncodingDetector {
         "utf-16be" to "UTF-16BE"
     )
 
-    /**
-     * 检测字节数组的编码
-     * 先用 juniversalchardet，失败则用 BOM + 启发式
-     */
     fun detect(data: ByteArray, offset: Int = 0, length: Int = data.size): DetectResult {
-        // 1. 检查 BOM
+        // BOM 检测
         val bomCharset = checkBom(data, offset, length)
         if (bomCharset != null) {
             return DetectResult(bomCharset, displayName(bomCharset), 1.0f)
         }
 
-        // 2. juniversalchardet 检测
+        // juniversalchardet
         val detector = UniversalDetector(null)
         detector.handleData(data, offset, length)
         detector.dataEnd()
@@ -55,20 +45,18 @@ object EncodingDetector {
             val charsetName = charsetAliases[alias] ?: detected.uppercase()
             return try {
                 val charset = Charset.forName(charsetName)
-                val conf = if (alias == "utf-8") 0.98f
+                DetectResult(charset, displayName(charset),
+                    if (alias == "utf-8") 0.98f
                     else if (alias == "gb2312" || alias == "gb18030") 0.95f
-                    else 0.90f
-                DetectResult(charset, displayName(charset), conf)
+                    else 0.90f)
             } catch (e: Exception) {
                 heuristicDetect(data, offset, length)
             }
         }
 
-        // 3. 启发式检测
         return heuristicDetect(data, offset, length)
     }
 
-    /** BOM 检测 */
     private fun checkBom(data: ByteArray, offset: Int, length: Int): Charset? {
         if (length < 2) return null
         val b0 = data[offset].toInt() and 0xFF
@@ -89,7 +77,6 @@ object EncodingDetector {
         return null
     }
 
-    /** 启发式检测：对中文小说常见的 GBK/UTF-8 做二分类 */
     private fun heuristicDetect(data: ByteArray, offset: Int, length: Int): DetectResult {
         val end = (offset + length).coerceAtMost(data.size)
         var gbkScore = 0
@@ -119,7 +106,6 @@ object EncodingDetector {
                     if (i + 3 < end) utf8Score += 3
                     i += 4
                 }
-                // GBK 第一字节范围: 0x81-0xFE
                 b in 0x81..0xFE -> {
                     if (i + 1 < end) {
                         val b2 = data[i + 1].toInt() and 0xFF

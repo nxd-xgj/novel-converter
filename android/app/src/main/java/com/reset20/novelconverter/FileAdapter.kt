@@ -4,9 +4,6 @@ import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 
-/**
- * 文件列表适配器
- */
 class FileAdapter(
     private val onRemove: (Int) -> Unit
 ) : RecyclerView.Adapter<FileAdapter.ViewHolder>() {
@@ -15,8 +12,8 @@ class FileAdapter(
         val uri: android.net.Uri,
         val name: String,
         val size: Long,
-        var encoding: String? = null,   // 检测出的编码名
-        var status: String = "pending"  // pending / detecting / done / error
+        var encoding: String? = null,
+        var status: String = "pending"
     )
 
     val items = mutableListOf<FileItem>()
